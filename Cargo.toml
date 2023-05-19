@@ -1,0 +1,10 @@
+[package]
+name = "spotify-reorder"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rspotify = {version = "*", default-features = false, features = ["cli", "client-ureq", "ureq-rustls-tls", "env-file"]}
+
