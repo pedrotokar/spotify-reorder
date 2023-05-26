@@ -6,6 +6,6 @@ of it. [Go follow me now >:(](https://open.spotify.com/user/315j3afyl5qddhiolfjy
 If you want to run it then create a env file with your app credentials, see the rspotify
 reference for futher information.
 ## Todo
-- [ ] Implement token caching
+- [x] Implement token caching
 - [ ] Implement the option to change the ordering parameters
 - [ ] Proper handle duplicated musics

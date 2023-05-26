@@ -1,5 +1,5 @@
 use rspotify::prelude::*;
-use rspotify::{scopes, AuthCodeSpotify, Credentials, OAuth, ClientResult, ClientError};
+use rspotify::{scopes, AuthCodeSpotify, Credentials, OAuth, ClientResult, ClientError, Token};
 use rspotify::model::{SimplifiedPlaylist, PlaylistItem, PlaylistId, PlayableItem, Market, FullEpisode, FullTrack};
 use rspotify::clients::pagination::Paginator;
 use std::{io, fmt, thread, time};
@@ -33,6 +33,34 @@ impl From<ClientError> for OrderingError {
     }
 }
 impl Error for OrderingError {}
+
+#[derive(Debug)]
+struct CachedLoginError;
+impl fmt::Display for CachedLoginError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result{
+        write!(formatter, "Unable to login with cached token.")
+    }
+}
+impl Error for CachedLoginError {}
+
+//This function will get a cached token from the storage. If it fails reading or the token does not
+//exist, it'll return an error, indicating that the program should ask for the authorization. If its
+//successfull, it'll return only a ok, since the spotify object will aready be with the token refreshed
+fn read_cached_token(spotify: &mut AuthCodeSpotify) -> Result<(), CachedLoginError>{
+    let token = match Token::from_cache(".token_cache"){
+        Ok(result) => Some(result),
+        Err(_) => return Err(CachedLoginError),
+    };
+    match spotify.token.lock(){
+        Ok(mut token_ref) => *token_ref = token,
+        Err(_) => return Err(CachedLoginError),
+    }
+    match spotify.refresh_token(){
+        Ok(_) => {},
+        Err(_) => return Err(CachedLoginError),
+    }
+    Ok(())
+}
 
 //This function get a list of all of the user's playlists, filtered by only the ones they own.
 //It can error when the lib errors by some reason (since the iterator return the playlists inside
@@ -163,14 +191,30 @@ fn reorder_musics(
 
 fn main(){
     //Code to authenticate in spotify.
-    //TODO: cache the token so I don't need to paste it every time.
+    //I've commited some war crimes in this part a.k.a nested matchs but now I really don't know
+    //how to make it better.
     let credentials = Credentials::from_env().unwrap();
     let oauth = OAuth::from_env(
         scopes!("playlist-read-private", "playlist-modify-private", "playlist-modify-public")
     ).unwrap();
-    let spotify = AuthCodeSpotify::new(credentials, oauth);
-    let url = spotify.get_authorize_url(false).expect("Unknown error.");
-    spotify.prompt_for_token(&url).unwrap();
+    let mut spotify = AuthCodeSpotify::new(credentials, oauth);
+    match read_cached_token(&mut spotify){
+        Ok(_) => {}, //Already logged, do nothing
+        Err(_) => { //No cached login, asks for authentication
+            let url = spotify.get_authorize_url(false).expect("Unknown error.");
+            match spotify.prompt_for_token(&url){
+                Ok(_) => match spotify.token.lock(){ //Logged in,just trying to cache token
+                    //I unwrap the as_ref here since the spotify object shouldn't be without a token...
+                    Ok(token_ref) => match token_ref.as_ref().unwrap().write_cache(".token_cache"){
+                        Ok(_) => println!("Successfully cached token."),
+                        Err(_) => println!("Couldn't cache the token"),
+                    },
+                    Err(_) => println!("Couldn't cache the token"),
+                },
+                Err(error) => panic!("Failed to authenticate into spotify: {}", error),
+            }
+        },
+    }
     println!("I've sucefully logged in as {}.", spotify.current_user().unwrap().display_name.unwrap());
 
     //Code to get and print playlists, also handle whe a user own no playlist.
