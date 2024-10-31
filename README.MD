@@ -9,3 +9,4 @@ reference for futher information.
 - [x] Implement token caching
 - [ ] Implement the option to change the ordering parameters
 - [ ] Proper handle duplicated musics
+- [ ] Rework sorting system (does it need to sort the array first to then reorder the playlist?)
