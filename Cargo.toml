@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rspotify = {version = "*", default-features = false, features = ["cli", "client-ureq", "ureq-rustls-tls", "env-file"]}
+rspotify = {version = "0.13.*", default-features = false, features = ["cli", "client-ureq", "ureq-rustls-tls", "env-file"]}
 
